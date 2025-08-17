@@ -1,5 +1,5 @@
 
-# **Tiny VLMs Lab**
+# **[Tiny VLMs Lab](https://huggingface.co/spaces/prithivMLmods/Tiny-VLMs-Lab)**
 
 Tiny VLMs Lab is an interactive web application built with Gradio that allows users to experiment with various small-scale Vision-Language Models (VLMs) for tasks such as image description, content extraction, OCR, reasoning, and captioning. The app supports uploading images, entering custom prompts, and generating outputs in text and PDF formats. It leverages multiple open-source models from Hugging Face, providing a streamlined interface for testing and comparing model performance on visual understanding tasks.
 
