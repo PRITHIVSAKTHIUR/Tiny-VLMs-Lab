@@ -377,7 +377,7 @@ def create_gradio_interface():
                                           "examples/4.png", "examples/5.png", "examples/6.png"],
                                 inputs=image_input, label="Examples"
                             )
-                        gr.Markdown("[Report-Bug💻](https://huggingface.co/spaces/prithivMLmods/Tiny-VLMs-Lab/discussions) | [prithivMLmods🤗](https://huggingface.co/prithivMLmods)")
+                        gr.Markdown("[Report-Bug💻](https://huggingface.co/spaces/prithivMLmods/Tiny-VLMs-Lab/discussions) | [![GitHub Repo](https://img.shields.io/badge/GitHub-Tiny--VLMs--Lab-black?logo=github&style=for-the-badge)](https://github.com/PRITHIVSAKTHIUR/Tiny-VLMs-Lab)")
                     
                     with gr.Tab("📰 README.md"):
                         with gr.Accordion("(Result.md)", open=True): 
