@@ -5,13 +5,13 @@ Tiny VLMs Lab is an interactive web application built with Gradio that allows us
 
 This project is hosted on Hugging Face Spaces and is open-source on GitHub. It demonstrates the capabilities of lightweight VLMs in a user-friendly environment, with advanced generation parameters and PDF export features.
 
+> **Hugging Face Space/App**: [https://huggingface.co/spaces/prithivMLmods/Tiny-VLMs-Lab](https://huggingface.co/spaces/prithivMLmods/Tiny-VLMs-Lab)
+
 ## Preview
 
 |![Image 3](https://cdn-uploads.huggingface.co/production/uploads/65bb837dbfb878f46c77de4c/BdY8XsSOXh9ayZIq6DGex.png) | ![Image 1](https://cdn-uploads.huggingface.co/production/uploads/65bb837dbfb878f46c77de4c/NVaxButskWzRNnT6EXtAS.png) | ![Image 2](https://cdn-uploads.huggingface.co/production/uploads/65bb837dbfb878f46c77de4c/EGULxIawkAqKJ8btgLVjU.png)  |
 |---|---|---|
 
-- **Hugging Face Spaces**: [https://huggingface.co/spaces/prithivMLmods/Tiny-VLMs-Lab](https://huggingface.co/spaces/prithivMLmods/Tiny-VLMs-Lab)
-- **GitHub Repository**: [https://github.com/PRITHIVSAKTHIUR/Tiny-VLMs-Lab](https://github.com/PRITHIVSAKTHIUR/Tiny-VLMs-Lab)
 
 ## Features
 
