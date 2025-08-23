@@ -342,16 +342,20 @@ def create_gradio_interface():
             # Left Column (Inputs)
             with gr.Column(scale=1):
                 model_choice = gr.Dropdown(
-                    choices=["LFM2-VL-450M(fast)", "LFM2-VL-1.6B(fast)", "SmolVLM-Instruct-250M(smol)", "Moondream2(vision)", "ShotVL-3B(cinematic)", "Megalodon-OCR-Sync-0713(ocr)", 
-                             "VLAA-Thinker-Qwen2VL-2B(reason)", "MonkeyOCR-pro-1.2B(ocr)", "Qwen2.5-VL-3B-Abliterated-Caption-it(caption)", "Nanonets-OCR-s(ocr)",
-                             "LMM-R1-MGT-PerceReason(reason)", "OCRFlux-3B(ocr)", "TBAC-VLR1-3B(open-r1)", "SmolVLM-500M-Instruct(smol)", "llava-onevision-qwen2-0.5b-ov-hf(mini)"],
+                    choices=["LFM2-VL-450M(fast)", "LFM2-VL-1.6B(fast)", "SmolVLM-Instruct-250M(smol)", "Moondream2(vision)",
+                             "ShotVL-3B(cinematic)", "Megalodon-OCR-Sync-0713(ocr)", 
+                             "VLAA-Thinker-Qwen2VL-2B(reason)", "MonkeyOCR-pro-1.2B(ocr)", 
+                             "Qwen2.5-VL-3B-Abliterated-Caption-it(caption)", "Nanonets-OCR-s(ocr)",
+                             "LMM-R1-MGT-PerceReason(reason)", "OCRFlux-3B(ocr)", "TBAC-VLR1-3B(open-r1)", 
+                             "SmolVLM-500M-Instruct(smol)", "llava-onevision-qwen2-0.5b-ov-hf(mini)"],
                     label="Select Model", value= "LFM2-VL-450M(fast)"
                 )
-                prompt_input = gr.Textbox(label="Query Input", placeholder="✦︎ Enter your query", value="Describe the image!")
+                
+                prompt_input = gr.Textbox(label="Query Input", placeholder="✦︎ Enter the prompt")
                 image_input = gr.Image(label="Upload Image", type="pil", sources=['upload'])
                 
-                with gr.Accordion("Advanced Settings", open=False):
-                    max_new_tokens = gr.Slider(minimum=512, maximum=8192, value=4096, step=256, label="Max New Tokens")
+                with gr.Accordion("Advanced Settings(pdf)", open=False):
+                    max_new_tokens = gr.Slider(minimum=512, maximum=8192, value=2048, step=256, label="Max New Tokens")
                     temperature = gr.Slider(label="Temperature", minimum=0.1, maximum=4.0, step=0.1, value=0.6)
                     top_p = gr.Slider(label="Top-p (nucleus sampling)", minimum=0.05, maximum=1.0, step=0.05, value=0.9)
                     top_k = gr.Slider(label="Top-k", minimum=1, maximum=1000, step=1, value=50)
@@ -377,7 +381,7 @@ def create_gradio_interface():
                                           "examples/4.png", "examples/5.png", "examples/6.png"],
                                 inputs=image_input, label="Examples"
                             )
-                        gr.Markdown("[Report-Bug💻](https://huggingface.co/spaces/prithivMLmods/Tiny-VLMs-Lab/discussions) | [![GitHub Repo](https://img.shields.io/badge/GitHub-Tiny--VLMs--Lab-black?logo=github&style=for-the-badge)](https://github.com/PRITHIVSAKTHIUR/Tiny-VLMs-Lab)")
+                        gr.Markdown("[Report-Bug💻](https://huggingface.co/spaces/prithivMLmods/Tiny-VLMs-Lab/discussions) | [prithivMLmods🤗](https://huggingface.co/prithivMLmods)")
                     
                     with gr.Tab("📰 README.md"):
                         with gr.Accordion("(Result.md)", open=True): 
@@ -412,4 +416,5 @@ def create_gradio_interface():
 
 if __name__ == "__main__":
     demo = create_gradio_interface()
+
     demo.queue(max_size=50).launch(share=True, ssr_mode=False, show_error=True)
