@@ -17,6 +17,10 @@ import requests
 import torch
 from PIL import Image
 import fitz
+import numpy as np
+import torchvision.transforms as T
+from torchvision.transforms.functional import InterpolationMode
+
 
 from transformers import (
     Qwen2_5_VLForConditionalGeneration,
@@ -32,7 +36,7 @@ from transformers import (
     LlavaOnevisionProcessor,
 )
 
-from transformers.image_utils import load_image
+from transformers.image_utils import load_image as hf_load_image
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
@@ -53,6 +57,75 @@ if torch.cuda.is_available():
     print("device name:", torch.cuda.get_device_name(torch.cuda.current_device()))
 
 print("Using device:", device)
+
+# --- InternVL3_5-2B-MPO Preprocessing Functions ---
+IMAGENET_MEAN = (0.485, 0.456, 0.406)
+IMAGENET_STD = (0.229, 0.224, 0.225)
+
+def build_transform(input_size):
+    MEAN, STD = IMAGENET_MEAN, IMAGENET_STD
+    transform = T.Compose([
+        T.Lambda(lambda img: img.convert('RGB') if img.mode != 'RGB' else img),
+        T.Resize((input_size, input_size), interpolation=InterpolationMode.BICUBIC),
+        T.ToTensor(),
+        T.Normalize(mean=MEAN, std=STD)
+    ])
+    return transform
+
+def find_closest_aspect_ratio(aspect_ratio, target_ratios, width, height, image_size):
+    best_ratio_diff = float('inf')
+    best_ratio = (1, 1)
+    area = width * height
+    for ratio in target_ratios:
+        target_aspect_ratio = ratio[0] / ratio[1]
+        ratio_diff = abs(aspect_ratio - target_aspect_ratio)
+        if ratio_diff < best_ratio_diff:
+            best_ratio_diff = ratio_diff
+            best_ratio = ratio
+        elif ratio_diff == best_ratio_diff:
+            if area > 0.5 * image_size * image_size * ratio[0] * ratio[1]:
+                best_ratio = ratio
+    return best_ratio
+
+def dynamic_preprocess(image, min_num=1, max_num=12, image_size=448, use_thumbnail=False):
+    orig_width, orig_height = image.size
+    aspect_ratio = orig_width / orig_height
+
+    target_ratios = set(
+        (i, j) for n in range(min_num, max_num + 1) for i in range(1, n + 1) for j in range(1, n + 1) if
+        i * j <= max_num and i * j >= min_num)
+    target_ratios = sorted(target_ratios, key=lambda x: x[0] * x[1])
+
+    target_aspect_ratio = find_closest_aspect_ratio(
+        aspect_ratio, target_ratios, orig_width, orig_height, image_size)
+
+    target_width = image_size * target_aspect_ratio[0]
+    target_height = image_size * target_aspect_ratio[1]
+    blocks = target_aspect_ratio[0] * target_aspect_ratio[1]
+
+    resized_img = image.resize((target_width, target_height))
+    processed_images = []
+    for i in range(blocks):
+        box = (
+            (i % (target_width // image_size)) * image_size,
+            (i // (target_width // image_size)) * image_size,
+            ((i % (target_width // image_size)) + 1) * image_size,
+            ((i // (target_width // image_size)) + 1) * image_size
+        )
+        split_img = resized_img.crop(box)
+        processed_images.append(split_img)
+    assert len(processed_images) == blocks
+    if use_thumbnail and len(processed_images) != 1:
+        thumbnail_img = image.resize((image_size, image_size))
+        processed_images.append(thumbnail_img)
+    return processed_images
+
+def load_image_internvl(image, input_size=448, max_num=12):
+    transform = build_transform(input_size=input_size)
+    images = dynamic_preprocess(image, image_size=input_size, use_thumbnail=True, max_num=max_num)
+    pixel_values = [transform(img) for img in images]
+    pixel_values = torch.stack(pixel_values)
+    return pixel_values
 
 # --- Model Loading ---
 MODEL_ID_M = "LiquidAI/LFM2-VL-450M"
@@ -98,12 +171,6 @@ MODEL_ID_X = "prithivMLmods/Megalodon-OCR-Sync-0713"
 processor_x = AutoProcessor.from_pretrained(MODEL_ID_X, trust_remote_code=True)
 model_x = Qwen2_5_VLForConditionalGeneration.from_pretrained(
     MODEL_ID_X, trust_remote_code=True, torch_dtype=torch.float16
-).to(device).eval()
-
-MODEL_ID_Z = "Vchitect/ShotVL-3B"
-processor_z = AutoProcessor.from_pretrained(MODEL_ID_Z, trust_remote_code=True)
-model_z = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-    MODEL_ID_Z, trust_remote_code=True, torch_dtype=torch.float16
 ).to(device).eval()
 
 # --- Moondream2 Model Loading ---
@@ -159,6 +226,15 @@ model_lo = LlavaOnevisionForConditionalGeneration.from_pretrained(
     MODEL_ID_LO,
     torch_dtype=torch.float16
 ).to(device).eval()
+
+# OpenGVLab/InternVL3_5-2B-MPO ---
+MODEL_ID_IV = 'OpenGVLab/InternVL3_5-2B-MPO'
+model_iv = AutoModel.from_pretrained(
+    MODEL_ID_IV,
+    torch_dtype=torch.bfloat16,
+    trust_remote_code=True,
+    device_map="auto").eval()
+tokenizer_iv = AutoTokenizer.from_pretrained(MODEL_ID_IV, trust_remote_code=True, use_fast=False)
 
 
 # --- PDF Generation and Preview Utility Function ---
@@ -261,6 +337,23 @@ def process_document_stream(
         )
         yield answer, answer
         return
+    
+    # --- Special Handling for InternVL ---
+    if model_name == "OpenGVLab/InternVL3_5-2B-MPO":
+        pixel_values = load_image_internvl(image, max_num=12).to(torch.bfloat16).to(device)
+        generation_config = dict(
+            max_new_tokens=max_new_tokens,
+            do_sample=True if temperature > 0 else False,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            repetition_penalty=repetition_penalty,
+        )
+        question = f"<image>\n{prompt_input}"
+        response = model_iv.chat(tokenizer_iv, pixel_values, question, generation_config)
+        yield response, response
+        return
+
 
     processor = None
     model = None
@@ -274,7 +367,6 @@ def process_document_stream(
     else:
         if model_name == "LFM2-VL-450M(fast)": processor, model = processor_m, model_m
         elif model_name == "LFM2-VL-1.6B(fast)": processor, model = processor_t, model_t
-        elif model_name == "ShotVL-3B(cinematic)": processor, model = processor_z, model_z
         elif model_name == "SmolVLM-Instruct-250M(smol)": processor, model = processor_c, model_c
         elif model_name == "MonkeyOCR-pro-1.2B(ocr)": processor, model = processor_g, model_g
         elif model_name == "VLAA-Thinker-Qwen2VL-2B(reason)": processor, model = processor_i, model_i
@@ -343,7 +435,7 @@ def create_gradio_interface():
             with gr.Column(scale=1):
                 model_choice = gr.Dropdown(
                     choices=["LFM2-VL-450M(fast)", "LFM2-VL-1.6B(fast)", "SmolVLM-Instruct-250M(smol)", "Moondream2(vision)",
-                             "ShotVL-3B(cinematic)", "Megalodon-OCR-Sync-0713(ocr)", 
+                             "OpenGVLab/InternVL3_5-2B-MPO", "Megalodon-OCR-Sync-0713(ocr)", 
                              "VLAA-Thinker-Qwen2VL-2B(reason)", "MonkeyOCR-pro-1.2B(ocr)", 
                              "Qwen2.5-VL-3B-Abliterated-Caption-it(caption)", "Nanonets-OCR-s(ocr)",
                              "LMM-R1-MGT-PerceReason(reason)", "OCRFlux-3B(ocr)", "TBAC-VLR1-3B(open-r1)", 
@@ -354,7 +446,7 @@ def create_gradio_interface():
                 prompt_input = gr.Textbox(label="Query Input", placeholder="✦︎ Enter the prompt")
                 image_input = gr.Image(label="Upload Image", type="pil", sources=['upload'])
                 
-                with gr.Accordion("Advanced Settings(pdf)", open=False):
+                with gr.Accordion("Advanced Settings (PDF)", open=False):
                     max_new_tokens = gr.Slider(minimum=512, maximum=8192, value=2048, step=256, label="Max New Tokens")
                     temperature = gr.Slider(label="Temperature", minimum=0.1, maximum=4.0, step=0.1, value=0.6)
                     top_p = gr.Slider(label="Top-p (nucleus sampling)", minimum=0.05, maximum=1.0, step=0.05, value=0.9)
