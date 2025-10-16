@@ -43,7 +43,6 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Image as RLImage, Paragraph, Spacer
 from reportlab.lib.units import inch
 
-# --- Constants and Model Setup ---
 MAX_INPUT_TOKEN_LENGTH = 4096
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -489,3 +488,4 @@ if __name__ == "__main__":
     demo = create_gradio_interface()
 
     demo.queue(max_size=50).launch(mcp_server=True, ssr_mode=False, show_error=True)
+
