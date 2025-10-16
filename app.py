@@ -128,18 +128,6 @@ def load_image_internvl(image, input_size=448, max_num=12):
     return pixel_values
 
 # --- Model Loading ---
-MODEL_ID_M = "LiquidAI/LFM2-VL-450M"
-processor_m = AutoProcessor.from_pretrained(MODEL_ID_M, trust_remote_code=True)
-model_m = AutoModelForImageTextToText.from_pretrained(
-    MODEL_ID_M, trust_remote_code=True, torch_dtype=torch.float16
-).to(device).eval()
-
-MODEL_ID_T = "LiquidAI/LFM2-VL-1.6B"
-processor_t = AutoProcessor.from_pretrained(MODEL_ID_T, trust_remote_code=True)
-model_t = AutoModelForImageTextToText.from_pretrained(
-    MODEL_ID_T, trust_remote_code=True, torch_dtype=torch.float16
-).to(device).eval()
-
 MODEL_ID_C = "HuggingFaceTB/SmolVLM-Instruct-250M"
 processor_c = AutoProcessor.from_pretrained(MODEL_ID_C, trust_remote_code=True)
 model_c = AutoModelForVision2Seq.from_pretrained(
@@ -159,12 +147,6 @@ MODEL_ID_I = "UCSC-VLAA/VLAA-Thinker-Qwen2VL-2B"
 processor_i = AutoProcessor.from_pretrained(MODEL_ID_I, trust_remote_code=True)
 model_i = Qwen2VLForConditionalGeneration.from_pretrained(
     MODEL_ID_I, trust_remote_code=True, torch_dtype=torch.float16
-).to(device).eval()
-
-MODEL_ID_A = "nanonets/Nanonets-OCR-s"
-processor_a = AutoProcessor.from_pretrained(MODEL_ID_A, trust_remote_code=True)
-model_a = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-    MODEL_ID_A, trust_remote_code=True, torch_dtype=torch.float16
 ).to(device).eval()
 
 MODEL_ID_X = "prithivMLmods/Megalodon-OCR-Sync-0713"
@@ -365,12 +347,9 @@ def process_document_stream(
         inputs = processor(text=prompt, images=image, return_tensors="pt").to(device, torch.float16)
     # --- Generic Handling for all other models ---
     else:
-        if model_name == "LFM2-VL-450M(fast)": processor, model = processor_m, model_m
-        elif model_name == "LFM2-VL-1.6B(fast)": processor, model = processor_t, model_t
-        elif model_name == "SmolVLM-Instruct-250M(smol)": processor, model = processor_c, model_c
+        if model_name == "SmolVLM-Instruct-250M(smol)": processor, model = processor_c, model_c
         elif model_name == "MonkeyOCR-pro-1.2B(ocr)": processor, model = processor_g, model_g
         elif model_name == "VLAA-Thinker-Qwen2VL-2B(reason)": processor, model = processor_i, model_i
-        elif model_name == "Nanonets-OCR-s(ocr)": processor, model = processor_a, model_a
         elif model_name == "Megalodon-OCR-Sync-0713(ocr)": processor, model = processor_x, model_x
         elif model_name == "Qwen2.5-VL-3B-Abliterated-Caption-it(caption)": processor, model = processor_n, model_n
         elif model_name == "LMM-R1-MGT-PerceReason(reason)": processor, model = processor_f, model_f 
@@ -434,13 +413,13 @@ def create_gradio_interface():
             # Left Column (Inputs)
             with gr.Column(scale=1):
                 model_choice = gr.Dropdown(
-                    choices=["LFM2-VL-450M(fast)", "LFM2-VL-1.6B(fast)", "SmolVLM-Instruct-250M(smol)", "Moondream2(vision)",
+                    choices=["SmolVLM-Instruct-250M(smol)", "Moondream2(vision)",
                              "OpenGVLab/InternVL3_5-2B-MPO", "Megalodon-OCR-Sync-0713(ocr)", 
                              "VLAA-Thinker-Qwen2VL-2B(reason)", "MonkeyOCR-pro-1.2B(ocr)", 
-                             "Qwen2.5-VL-3B-Abliterated-Caption-it(caption)", "Nanonets-OCR-s(ocr)",
+                             "Qwen2.5-VL-3B-Abliterated-Caption-it(caption)",
                              "LMM-R1-MGT-PerceReason(reason)", "OCRFlux-3B(ocr)", "TBAC-VLR1-3B(open-r1)", 
                              "SmolVLM-500M-Instruct(smol)", "llava-onevision-qwen2-0.5b-ov-hf(mini)"],
-                    label="Select Model", value= "LFM2-VL-450M(fast)"
+                    label="Select Model", value= "Qwen2.5-VL-3B-Abliterated-Caption-it(caption)"
                 )
                 
                 prompt_input = gr.Textbox(label="Query Input", placeholder="✦︎ Enter the prompt")
@@ -509,4 +488,4 @@ def create_gradio_interface():
 if __name__ == "__main__":
     demo = create_gradio_interface()
 
-    demo.queue(max_size=50).launch(share=True, ssr_mode=False, show_error=True)
+    demo.queue(max_size=50).launch(mcp_server=True, ssr_mode=False, show_error=True)
