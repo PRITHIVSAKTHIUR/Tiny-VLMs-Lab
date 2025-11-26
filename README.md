@@ -71,6 +71,7 @@ To run the app locally, ensure you have Python installed (version 3.10 or higher
    - git+https://github.com/huggingface/peft.git
    - transformers-stream-generator
    - huggingface_hub
+   - gradio==5.49.1
    - albumentations
    - pyvips-binary
    - qwen-vl-utils
@@ -90,7 +91,6 @@ To run the app locally, ensure you have Python installed (version 3.10 or higher
    - spaces
    - pyvips
    - pillow
-   - gradio
    - einops
    - torch
    - fpdf
